@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 from urllib.parse import urljoin, urlparse
 import httpx
 from defusedxml import ElementTree as SafeET
+from app.statutory_retrieval import family_queries, law_level, extract_relevant_articles
 
 API_ROOT = 'https://www.law.go.kr/DRF/'
 TAGS = {
@@ -273,11 +274,36 @@ async def _search_target(client, oc, target, word, question, max_results=3):
                     params['ID']=str(serial)
                 detail = await _request_xml(client, 'lawService.do', params)
                 root = SafeET.fromstring(detail)
-                body = _flatten_content(root, target, question, title)
+                if target == "law":
+                    articles = extract_relevant_articles(
+                        root, question, title, max_articles=2,
+                        topic_weights=_law_topics(question, title))
+                    body = articles[0]['body'] if articles else ''
+                else:
+                    articles = []
+                    body = _flatten_content(root, target, question, title)
             except (httpx.HTTPError, ValueError, ET.ParseError):
                 body = ''
+                articles = []
             if not body:
                 continue  # no heading-only sources presented as evidence
+            if target == "law":
+                for art in articles:
+                    results.append({
+                        'id': f'law-{serial}-{art["article_number"]}',
+                        'kind': '법령',
+                        'title': f'{title} {art["article_label"]}',
+                        'law_title': title,
+                        'law_level': law_level(title),
+                        'article_number': art['article_number'],
+                        'retrieval_score': art['retrieval_score'],
+                        'organization': rec.get('소관부처명') or '법제처 국가법령정보센터',
+                        'issued_date': rec.get('시행일자') or '',
+                        'url': _official_link(target, serial, title),
+                        'body': art['body'],
+                        'source_note': '법제처 현행법령 해당 조문',
+                    })
+                continue
             results.append({
                 'id':f'{target}-{serial}',
                 'kind': ('법령' if target == 'law' else '법제처 해석례' if target == 'expc' else '법제처 법령해석' if target == 'molegCgmExpc' else '국토부 질의회신'),
@@ -516,18 +542,16 @@ async def search_official(question, oc, deep=True, categories=None):
     words=keywords(question)
     if not words and not _case_number(question):
         return [], '검색할 키워드가 없습니다.'
-    law_names=list(dict.fromkeys(name for trigger,name in PREFERRED_LAWS
-               if trigger in question or trigger in ' '.join(words)))[:3]
     allowed=set(categories or ('law','expc','molit'))
-    law_queries=([q for name in law_names for q in (name, name+' 시행령')]
-                 if law_names else ([words[0]] if words and not _case_number(question) else []))
+    law_queries=family_queries(question, PREFERRED_LAWS,
+               fallback=(words[0] if words and not _case_number(question) else ''))
     if 'law' not in allowed:
         law_queries=[]
     interpretation_targets=tuple(target for target, category in (('expc','expc'),('molegCgmExpc','expc'),('molitCgmExpc','molit')) if category in allowed)
     try:
         async with httpx.AsyncClient(follow_redirects=False, timeout=15.0) as client:
             acts=asyncio.gather(*[
-                _search_target(client,oc,'law',word,question,max_results=2)
+                _search_target(client,oc,'law',word,question,max_results=1)
                 for word in law_queries
             ])
             interpretations=_search_interpretations(client,oc,question,deep=deep,targets=interpretation_targets)

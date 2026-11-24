@@ -4,6 +4,7 @@ This is a transparent lexical ranker, NOT a semantic relevance or legal-accuracy
 """
 import re
 from app.law_api import keywords
+from app.statutory_retrieval import law_level
 
 MAX_DISPLAY = 24
 MAX_EVIDENCE = 12
@@ -60,37 +61,61 @@ def lexical_score(question: str, item: dict, terms: list[str] | None = None) -> 
 
 
 def prepare_sources(question: str, candidates: list[dict]) -> tuple[list[dict], list[str]]:
-    """Merge duplicate IDs, sort by lexical evidence match and pin relevant statutes."""
-    terms = ranking_terms(question)
-    seen = set()
-    ranked = []
-    for idx, original in enumerate(candidates):
-        item = dict(original)
-        key = item.get('id') or (item.get('kind'), item.get('title'), item.get('body', '')[:60])
-        if key in seen:
-            continue
-        seen.add(key)
-        score = lexical_score(question, item, terms)
-        item['match_score'] = score
-        item['citation_group'] = citation_group(item.get('kind', ''))
-        ranked.append((score, idx, item))
-    ranked.sort(key=lambda t: (-t[0], t[1]))
-    prepared = [item for _, _, item in ranked[:MAX_DISPLAY]]
-    for i, item in enumerate(prepared, 1):
-        # Opaque within a result set; selected IDs are checked against server cache.
-        item['ref_id'] = f's{i}'
-        item['citation_number'] = i
-    # Preserve up to three best relevant statutes, then use all remaining slots
-    # across source categories by relevance. User may change any selection.
-    statute = [i for i, s in enumerate(prepared) if s['kind'] == '법령' and s['match_score'] > 0][:3]
-    selected_indices = set(statute)
-    for i in range(len(prepared)):
-        if len(selected_indices) >= MAX_EVIDENCE:
-            break
-        selected_indices.add(i)
-    selected_ids = [s['ref_id'] for i, s in enumerate(prepared) if i in selected_indices]
-    return prepared, selected_ids
+    """Rank candidates while reserving actual Act/Decree/Rule evidence.
 
+    This is lexical relevance, not a legal-accuracy score.  Directly applicable
+    statutes from distinct tiers cannot be displaced by 20 similar case titles.
+    """
+    terms=ranking_terms(question)
+    seen=set(); ranked=[]
+    for idx, original in enumerate(candidates):
+        item=dict(original)
+        key=item.get('id') or (item.get('kind'), item.get('title'), item.get('body','')[:60])
+        if key in seen: continue
+        seen.add(key)
+        score=lexical_score(question,item,terms)
+        # Official provision + direct keyword evidence earns a moderate boost.
+        # It does NOT substitute for checking the actual section's content.
+        if item.get('kind')=='법령' and item.get('article_number'):
+            normalized = normalize(item.get('body',''))
+            matched = sum(1 for term in terms if term in normalized)
+            if matched >= 2:
+                score += 12 + min(3, matched)*3
+        item['match_score']=score
+        item['citation_group']=citation_group(item.get('kind',''))
+        if item.get('kind')=='법령':
+            item['law_level']=item.get('law_level') or law_level(item.get('law_title') or item.get('title',''))
+        ranked.append((score,idx,item))
+    ranked.sort(key=lambda t:(-t[0],t[1]))
+    # One reference from each available statute tier, even if many case titles
+    # repeat the query. Avoid including unrelated zero-match statutes.
+    reserved=[]
+    for level in ('법률','시행령','시행규칙'):
+        hit=next((t for t in ranked if t[2].get('kind')=='법령'
+                  and t[2].get('law_level')==level and t[0]>0), None)
+        if hit and hit not in reserved: reserved.append(hit)
+    kept=list(reserved)
+    kept_keys={t[1] for t in kept}
+    for t in ranked:
+        if len(kept)>=MAX_DISPLAY: break
+        if t[1] not in kept_keys:
+            kept.append(t);kept_keys.add(t[1])
+    kept.sort(key=lambda t:(-t[0],t[1]))
+    prepared=[item for _,_,item in kept]
+    for i,item in enumerate(prepared,1):
+        item['ref_id']=f's{i}'
+        item['citation_number']=i
+    selected = {i for i,s in enumerate(prepared)
+        if any(s is tier[2] for tier in reserved)}
+    # Preserve old guarantee for tests and cases where no tier metadata exists:
+    # include up to three relevant legal documents, not just interpretations.
+    for i,src in enumerate(prepared):
+        if src['kind']=='법령' and src['match_score']>0 and len(selected)<3:
+            selected.add(i)
+    for i in range(len(prepared)):
+        if len(selected)>=MAX_EVIDENCE: break
+        selected.add(i)
+    return prepared,[prepared[i]['ref_id'] for i in range(len(prepared)) if i in selected]
 
 def selected_sources(sources: list[dict], selected_ids: list[str]) -> list[dict]:
     """Preserve display / citation order, regardless of checkbox click order."""
