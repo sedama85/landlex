@@ -23,6 +23,15 @@ def connect():
 
 
 def initialize():
+    # Deployable corpus seed: a prebuilt SQLite DB can live in the Git checkout.
+    # Render Free has ephemeral writable storage, so recreate the runtime copy
+    # on every fresh deployment. Never overwrite an existing local DB.
+    if not DB_PATH.exists():
+        seed = Path(os.getenv('LANDLEX_SEED_DB', 'corpus/landlaw.db'))
+        if seed.is_file() and seed.resolve() != DB_PATH.resolve():
+            import shutil
+            DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(seed, DB_PATH)
     with LOCK, connect() as c:
         c.execute('''CREATE TABLE IF NOT EXISTS documents (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,49 +142,71 @@ def _keywords(question):
 
 
 def search_local(question, limit=8):
+    """Corpus-wide trigram FTS with result diversification by source document."""
+    from collections import Counter
     from app.law_api import keywords as legal_keywords
-    # Broaden uploaded casebook lookup too: 경자구역 -> 경제자유구역,
-    # 유치업종 -> 유치산업, etc. Keep an upper bound for large documents.
-    tokens=list(dict.fromkeys(_keywords(question) + legal_keywords(question)))[:22]
-    if not tokens:
+    tokens = list(dict.fromkeys(_keywords(question) + legal_keywords(question)))[:22]
+    if not tokens or limit < 1:
         return []
-    # FTS5 trigram indexes LIKE patterns containing >=3 contiguous characters.
-    # Avoid retrieving the full corpus (the previous version loaded all full texts).
     with connect() as c:
         indexed = bool(c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='document_chunks_fts'").fetchone())
-        long_tokens = [t for t in tokens if len(t) >= 3]
+        long_tokens = [t for t in tokens if len(t) >= 3][:12]
+        candidates = []
         if indexed and long_tokens:
-            clauses = ' OR '.join('f.body LIKE ?' for _ in long_tokens)
-            params = [f'%{t}%' for t in long_tokens]
-            query = f'''SELECT ch.id,ch.document_id,ch.chunk_index,ch.page,
-                ch.body,d.title,d.kind,d.organization,d.issued_date,d.source_url
-                FROM document_chunks_fts f
-                JOIN document_chunks ch ON f.rowid=ch.id
-                JOIN documents d ON d.id=ch.document_id
-                WHERE {clauses} LIMIT 1200'''
-            candidates = list(c.execute(query, params))
-        else:
+            expression = ' OR '.join('"'+t.replace('"','""')+'"' for t in long_tokens)
+            try:
+                candidates = list(c.execute('''SELECT ch.id,ch.document_id,ch.chunk_index,ch.page,ch.body,
+                    d.title,d.kind,d.organization,d.issued_date,d.source_url
+                    FROM document_chunks_fts f
+                    JOIN document_chunks ch ON f.rowid=ch.id
+                    JOIN documents d ON d.id=ch.document_id
+                    WHERE document_chunks_fts MATCH ? ORDER BY rank LIMIT 1400''', (expression,)))
+            except sqlite3.OperationalError:
+                candidates = []
+        if not candidates:
             clauses = ' OR '.join('ch.body LIKE ?' for _ in tokens)
-            params = [f'%{t}%' for t in tokens]
-            candidates = list(c.execute(f'''SELECT ch.id,ch.document_id,ch.chunk_index,ch.page,
-                ch.body,d.title,d.kind,d.organization,d.issued_date,d.source_url
+            candidates = list(c.execute(f'''SELECT ch.id,ch.document_id,ch.chunk_index,ch.page,ch.body,
+                d.title,d.kind,d.organization,d.issued_date,d.source_url
                 FROM document_chunks ch JOIN documents d ON d.id=ch.document_id
-                WHERE {clauses} LIMIT 1200''', params))
-    ranked=[]
+                WHERE {clauses} LIMIT 1400''', [f'%{t}%' for t in tokens]))
+    df = Counter()
     for r in candidates:
-        body=r['body'].lower(); title=r['title'].lower()
-        hits=sum(min(body.count(t),4) for t in tokens)
-        score = hits + sum(5 for t in tokens if t in title)
-        # A paragraph-level chunk is already short; provide full chunk for citation.
-        if score:
-            page = r['page']
-            suffix = f' · {page}쪽' if page else f' · 구간 {r["chunk_index"]+1}'
-            ranked.append((score, {
-                'id': f'local-{r["id"]}', 'kind':r['kind'],
-                'title':r['title']+suffix,'organization':r['organization'],
-                'issued_date':r['issued_date'],'url':r['source_url'],
-                'body':r['body'],'source_note':'관리자 등록 공개자료'+suffix
-            }))
-    ranked.sort(key=lambda x:x[0],reverse=True)
-    # Prefer results from different parts of the source and independent docs.
-    return [r for _, r in ranked[:limit]]
+        text = (r['body']+' '+r['title']).lower()
+        for t in tokens:
+            if t in text:
+                df[t] += 1
+    ranked = []
+    for r in candidates:
+        body = r['body'].lower()
+        title = r['title'].lower()
+        score = 0
+        hits = 0
+        for t in tokens:
+            n = body.count(t)
+            in_title = t in title
+            if n or in_title:
+                hits += 1
+                weight = 1+8/(1+df[t]**0.5)
+                score += weight*(min(n,3)+(3 if in_title else 0))
+        if not score:
+            continue
+        score += hits*3
+        suffix = (f' · {r["page"]}쪽' if r['page'] else f' · 구간 {r["chunk_index"]+1}')
+        ranked.append((score,r['document_id'],{
+            'id': f'local-{r["id"]}', 'kind':r['kind'],
+            'title':r['title']+suffix, 'organization':r['organization'],
+            'issued_date':r['issued_date'], 'url':r['source_url'],
+            'body':r['body'], 'source_note':'문헌 원문'+suffix
+        }))
+    ranked.sort(key=lambda x:-x[0])
+    selected=[]; by_doc=Counter(); seen=set()
+    for max_per_doc in (2,limit):
+        for score,doc_id,item in ranked:
+            if len(selected)>=limit:
+                break
+            if item['id'] in seen or by_doc[doc_id]>=max_per_doc:
+                continue
+            selected.append(item);seen.add(item['id']);by_doc[doc_id]+=1
+        if len(selected)>=limit:
+            break
+    return selected
