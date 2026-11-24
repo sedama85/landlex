@@ -1,0 +1,31 @@
+LandLex FREE AI integration (Gemini and Ollama)
+
+This release adds free AI providers. Do NOT overwrite your existing .env file.
+
+Gemini (simplest):
+1. Visit https://aistudio.google.com/apikey and create a Gemini API key.
+2. Stop the LandLex CMD server using Ctrl+C.
+3. Open .env in the original LandLex folder and ADD/CHANGE:
+     AI_PROVIDER=gemini
+     GEMINI_API_KEY=YOUR_NEW_GOOGLE_KEY
+     GEMINI_MODEL=gemini-3.5-flash-lite
+4. Keep LAW_OC as it is. OPENAI_API_KEY can be left blank.
+5. Restart start_windows.bat and open http://127.0.0.1:8000/api/status
+6. It should show ai_provider: gemini, ai_connected: true (key configured only).
+7. Ask an existing question and check for AI response.
+
+Google Gemini free tier is rate-limited and may use input/output for product improvement.
+DO NOT send confidential, personal, or sensitive materials via the free tier.
+
+Ollama (local AI without any API key, needs an adequate Windows PC):
+1. Install https://ollama.com/download/windows
+2. Open CMD and run: ollama pull qwen3.5:4b
+3. Run Ollama on your PC, then set in .env:
+     AI_PROVIDER=ollama
+     OLLAMA_MODEL=qwen3.5:4b
+4. Keep Ollama API local; NEVER expose port 11434 publicly.
+5. Restart LandLex and ask a question.
+
+Public launch: this patch is a local demo, NOT hardened for Internet exposure.
+Add authentication, quotas, proper data privacy and user notice before public deployment.
+Do not upload .env, .venv or private PDFs to GitHub.

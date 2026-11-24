@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: landlex-beta
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.9
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: BETA_PER_IP_HOURLY
+        value: '10'
+      - key: BETA_GLOBAL_DAILY
+        value: '100'
+      - key: MAX_UPLOAD_MB
+        value: '20'
+      - key: DATABASE_PATH
+        value: /tmp/landlex_beta.db
+      - key: LAW_OC
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
