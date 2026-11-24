@@ -34,13 +34,29 @@ ALIAS = {
 }
 
 
+def _plan_concepts(question: str) -> bool:
+    """Recognize statutory parent/child concepts and common pre-2020 spelling.
+
+    A district unit plan is adopted as an urban/county management plan under
+    National Land Planning Act art. 50. Relevance does not establish that a
+    particular parcel is subject to an adopted district unit plan.
+    """
+    plain = re.sub(r'[^0-9a-z가-힣]', '', question.lower())
+    return any(x in plain for x in ('도시관리계획', '도시군관리계획', '지구단위계획'))
+
+
 def keywords(question: str):
     result = []
+    # Expand the legal hierarchy before generic words consume the keyword budget.
+    if _plan_concepts(question):
+        result.extend(['도시·군관리계획', '지구단위계획', '도시관리계획'])
+    if '개발행위' in question:
+        result.append('개발행위허가')
     for short,long in ALIAS.items():
         if short in question and long not in result:
             result.append(long)
     # Prioritize meaningful compound words, not arbitrary full sentences.
-    for phrase in ['경제자유구역','산업단지','국토의 계획','개발계획','실시계획','유치업종','법령해석','개발행위','공유수면','지구단위계획','관리기본계획', '유치산업', '산업유치계획']:
+    for phrase in ['경제자유구역','산업단지','국토의 계획','개발계획','실시계획','유치업종','법령해석','개발행위','공유수면','지구단위계획','도시관리계획','도시·군관리계획','관리기본계획', '유치산업', '산업유치계획']:
         if phrase in question and phrase not in result:
             result.append(phrase)
     for token in re.findall(r'[가-힣A-Za-z0-9]{2,}', question):
@@ -83,6 +99,11 @@ def _records_from_xml(raw: bytes, target: str):
 PREFERRED_LAWS = (
     ('경제자유구역', '경제자유구역의 지정 및 운영에 관한 특별법'),
     ('국토의 계획', '국토의 계획 및 이용에 관한 법률'),
+    ('도시관리계획', '국토의 계획 및 이용에 관한 법률'),
+    ('도시·군관리계획', '국토의 계획 및 이용에 관한 법률'),
+    ('도시군관리계획', '국토의 계획 및 이용에 관한 법률'),
+    ('지구단위계획', '국토의 계획 및 이용에 관한 법률'),
+    ('개발행위', '국토의 계획 및 이용에 관한 법률'),
     ('도시개발', '도시개발법'),
     ('산업집적', '산업집적활성화 및 공장설립에 관한 법률'),
     ('공유수면', '공유수면 관리 및 매립에 관한 법률'),
@@ -100,6 +121,12 @@ def _law_topics(question, title):
         if '시행령' in title:
             return {'5의2': 100, '5': 15}
         return {'6': 85, '7': 95}
+    if '국토의 계획 및 이용에 관한 법률' in title and _plan_concepts(question) and '개발행위' in question:
+        # Legal hierarchy: art.50 (district-unit plan -> management plan),
+        # art.58(1)2 (permit must conform to management plan).
+        if '시행령' in title:
+            return {'56': 120, '55': 30}
+        return {'58': 200, '50': 190, '2': 100, '56': 70, '52': 60}
     return {}
 
 
@@ -143,13 +170,17 @@ def _compact_article(el, question, title, max_chars=2450):
 def _flatten_content(root: ET.Element, target: str, question: str, title: str = ''):
     if target == 'law':
         preferences=_law_topics(question,title)
+        # Keep the controlling provisions in the per-source AI context; otherwise
+        # a long unrelated article can push art.50 below the 2,200-char limit.
+        focus = bool(_plan_concepts(question) and '개발행위' in question and
+                     '국토의 계획 및 이용에 관한 법률' in title)
         scored=[]
         kw=[w for w in keywords(question) if len(w)>2]
         for el in root.iter():
             if el.tag.split('}')[-1] != '조문단위':
                 continue
             number=_article_num(el)
-            content=_compact_article(el,question,title)
+            content=_compact_article(el,question,title, max_chars=750 if focus else 2450)
             if not content:
                 continue
             matched=sum((3 if w in ('유치산업','산업유치계획','유치업종') else 1) for w in kw if w in content)
@@ -271,6 +302,7 @@ INTERPRETATION_TARGETS = ('expc', 'molegCgmExpc', 'molitCgmExpc')
 CASE_NUMBER = re.compile(r'(?<![0-9])([0-9]{2})\s*[-‐‑–—]\s*([0-9]{4})(?![0-9])')
 SEARCH_TERMS = (
     '감정평가업자', '감정평가', '유치산업', '유치업종', '입주업종',
+    '도시관리계획', '도시·군관리계획', '지구단위계획', '개발행위허가',
     '산업유치계획', '관리기본계획', '공유수면', '경제자유구역',
     '지구단위계획', '매립실시계획', '실시계획', '개발계획',
     '개발행위', '산업단지', '매립', '의제', '변경승인',
@@ -484,8 +516,8 @@ async def search_official(question, oc, deep=True, categories=None):
     words=keywords(question)
     if not words and not _case_number(question):
         return [], '검색할 키워드가 없습니다.'
-    law_names=[name for trigger,name in PREFERRED_LAWS
-               if trigger in question or trigger in ' '.join(words)][:3]
+    law_names=list(dict.fromkeys(name for trigger,name in PREFERRED_LAWS
+               if trigger in question or trigger in ' '.join(words)))[:3]
     allowed=set(categories or ('law','expc','molit'))
     law_queries=([q for name in law_names for q in (name, name+' 시행령')]
                  if law_names else ([words[0]] if words and not _case_number(question) else []))

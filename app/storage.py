@@ -176,6 +176,9 @@ def search_local(question, limit=8):
             if t in text:
                 df[t] += 1
     ranked = []
+    normalized_question = re.sub(r'[^0-9a-z가-힣]', '', question.lower())
+    plan_review = ('개발행위' in normalized_question and any(
+        t in normalized_question for t in ('도시관리계획', '도시군관리계획', '지구단위계획')))
     for r in candidates:
         body = r['body'].lower()
         title = r['title'].lower()
@@ -191,6 +194,20 @@ def search_local(question, limit=8):
         if not score:
             continue
         score += hits*3
+        if plan_review:
+            # Prioritize provisions on development-permit conformity with urban management plans.
+            plain = re.sub(r'[^0-9a-z가-힣]', '', body)
+            if any(fragment in plain for fragment in (
+                '도시관리계획의내용에배치되지아니할것',
+                '도시군관리계획및성장관리계획의내용에어긋나지아니할것',
+                '도시군관리계획의내용에어긋나지아니할것')):
+                score += 120
+            if '개발행위' in plain and any(x in plain for x in ('도시관리계획','도시군관리계획')):
+                score += 20
+            if '지구단위계획' in plain and '개발행위' in plain:
+                score += 15
+            if '지구단위계획' in plain and any(x in plain for x in ('도시관리계획','도시군관리계획')):
+                score += 25
         suffix = (f' · {r["page"]}쪽' if r['page'] else f' · 구간 {r["chunk_index"]+1}')
         ranked.append((score,r['document_id'],{
             'id': f'local-{r["id"]}', 'kind':r['kind'],
