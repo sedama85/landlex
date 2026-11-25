@@ -38,7 +38,7 @@ const addHistory = rec => {
 // A blue reference means a statute/regulation; green means an interpretation or Q&A.
 // Do not use innerHTML for user/AI generated text: citation links are safe DOM nodes.
 function sourceColor(kind){
-  if(kind === '법령') return 'law';
+  if(kind === '법령' || kind === '행정규칙') return 'law';
   if(['법제처 해석례','법제처 법령해석','국토부 질의회신','질의회신'].includes(kind)) return 'qa';
   if(kind === '판례') return 'case';
   return 'other';
@@ -106,7 +106,7 @@ function openCitation(number){
   setTimeout(()=>card.classList.remove('citation-focus'),1800);
 }
 function citationTitle(s){
-  if(s.kind==='법령'){
+  if(s.kind==='법령' || s.kind==='행정규칙'){
     return (s.title||'법령')
       .replace('경제자유구역의 지정 및 운영에 관한 특별법','경제자유구역법')
       .replace('국토의 계획 및 이용에 관한 법률','국토계획법')
@@ -252,6 +252,9 @@ function renderResult(data){
   if(Array.isArray(plan.official_queries)){
     planList.append(el('p','','추가 법령 조회: '+plan.official_queries.length+'회'));
     for(const q of plan.official_queries)planList.append(el('p','','조회: '+q));
+  }
+  if(typeof plan.administrative_rules_selected==='number') {
+    planList.append(el('p','','AI에 전달된 행정규칙: '+plan.administrative_rules_selected+'건'));
   }
   if(typeof plan.statute_articles_selected==='number'){
     planList.append(el('p','','AI에 전달된 법령 조문: '+plan.statute_articles_selected+'건'));

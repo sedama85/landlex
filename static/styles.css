@@ -103,3 +103,62 @@ body.detail-open .workspace .main-area{max-width:800px;}
 .search-plan-list p{margin:3px 0;}
 .search-plan-list small{color:#9aabb9;}
 .search-plan-issue{font-weight:600;color:#6c879a;}
+
+
+/* BJFEZ_BRAND_V12 | Official-logo inspired navy + restrained golden accent.
+   Branding indicates interface design only; this remains a public reference tool. */
+:root{--ink:#142e48;--sub:#62748a;--brand:#153b5f;--primary:#1e4c75;
+  --line:#e4eaf1;--bg:#f4f7fa;--card:#fff;--soft:#f0f4f7;
+  --green:#188568;--shadow:0 12px 34px rgba(17,46,73,.065)}
+body{background:var(--bg);color:var(--ink)}
+.sidebar{background:#fff;border-right:1px solid #e2e9f0;box-shadow:5px 0 24px rgba(19,50,77,.018)}
+.sidebar::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,#153b5f 0%,#153b5f 72%,#f0b913 72%,#f0b913 100%)}
+.brand{align-items:center;gap:8px;padding:5px 2px 32px}
+.brand-logo{display:block;flex:none;width:65px;height:48px;object-fit:contain;background:#fff}
+.brand-copy{min-width:0}
+.brand-copy strong{font-size:17px;line-height:1.28;letter-spacing:.025em;color:#122d47;font-weight:800}
+.brand-copy small{font-size:10px;line-height:1.55;margin-top:3px;white-space:normal;word-break:keep-all;
+  color:#75879a;font-weight:600;letter-spacing:-.05em}
+.new-chat,.send,.reanalyze-button,.solid-button{background:#19476c;box-shadow:0 5px 13px rgba(24,62,96,.13)}
+.new-chat:hover,.send:hover,.reanalyze-button:hover:not(:disabled),.solid-button:hover{background:#103955}
+.side-item.selected{background:#edf3f7;color:#1a5278;box-shadow:inset 3px 0 0 #e3a809}
+.side-item:hover{background:#f4f8fa}
+.sidebar-notice{font-size:10px;line-height:1.6;color:#8696a5;margin:0 0 12px;
+  padding:8px 9px;border:1px solid #edf1f4;border-radius:7px;background:#fafbfd}
+.topbar{background:rgba(255,255,255,.94);border-bottom:1px solid #e0e8ee}
+.avatar{background:#edf4f9;color:#19496e;border-color:#dbe5ed}
+.main-area{max-width:990px}
+.welcome{max-width:810px;margin-top:19px;border-radius:21px;border:1px solid #e1eaf1;
+  padding:28px 30px 27px;background:radial-gradient(circle at 100% 0%,rgba(244,193,36,.105),transparent 32%),
+  linear-gradient(150deg,#fff 55%,#f7fafc 100%);box-shadow:0 10px 30px rgba(20,55,79,.035)}
+.eyebrow{font-size:10px;color:#9c7313;letter-spacing:.135em}
+.eyebrow .line{background:#e2ac1b}
+.welcome h1{font-size:clamp(25px,2.9vw,34px);line-height:1.48;letter-spacing:-.055em;
+  font-weight:800;margin:15px 0 9px}
+.welcome h1 span{color:#244e70}
+.welcome-intro{margin:0;font-size:12px;line-height:1.86;color:#6e8193}
+.capability-tags{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:17px}
+.capability-tags span{font-size:10px;font-weight:700;border-radius:100px;color:#355874;
+  border:1px solid #dfebf3;background:#f3f8fb;padding:6px 10px}
+.capability-tags span:nth-child(2){color:#8b6706;background:#fffaf0;border-color:#f0e5c5}
+.examples-heading{margin:25px 0 14px;font-size:12px;color:#304e69}
+.examples{gap:9px}
+.example{border-radius:11px;background:#fff;border:1px solid #e3ebf1;transition:border-color .16s,box-shadow .16s,transform .16s}
+.example:hover{border-color:#d0dfea;box-shadow:0 8px 17px rgba(18,54,82,.07);transform:translateY(-1px)}
+.example-icon.amber{background:#fff6dd;color:#a97900}
+.analysis-card{border-radius:16px;border:1px solid #e0e9f0;box-shadow:0 10px 30px rgba(17,46,73,.055)}
+.composer{border-radius:15px;border:1px solid #d7e3ec;box-shadow:0 6px 22px rgba(19,51,75,.095)}
+.composer:focus-within{border-color:#9db9ce;box-shadow:0 9px 26px rgba(19,51,75,.12)}
+.composer textarea::placeholder{color:#8c9aab;font-size:11px;line-height:1.65}
+.filters label{border-radius:7px;background:#f4f7fa;border:1px solid #e5ecf1;color:#617b91}
+.filters input{accent-color:#1d587d}
+.source-card{border-color:#e2e9f0;box-shadow:0 2px 7px rgba(27,62,91,.018)}
+.source-card.ai-selected{border-left-color:#d6a31a}
+.detail-panel{box-shadow:0 14px 48px rgba(13,43,67,.18)}
+.search-plan-panel summary{color:#265978}
+@media(max-width:900px){.welcome{padding:22px 20px;margin-top:6px}.brand{padding-left:0;padding-right:0}}
+@media(max-width:690px){.brand{padding:5px 6px 23px}.welcome{margin-top:10px;padding:20px 18px}
+ .welcome h1{font-size:26px}.welcome-intro{font-size:11px}.capability-tags{gap:5px}
+ .capability-tags span{font-size:9px;padding:5px 8px}.examples-heading{margin-top:20px}
+ .composer textarea::placeholder{font-size:10px}}

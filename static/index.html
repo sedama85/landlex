@@ -4,43 +4,50 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <meta name="description" content="법령, 법제처 해석례, 국토교통부 질의회신을 함께 검색하는 국토·도시개발 법령 AI">
-  <title>LandLex · 국토·도시개발 법령 AI</title>
-  <link rel="stylesheet" href="/static/styles.css?v=10">
+  <meta name="description" content="경제자유구역 법령검토 도우미 BJFEZ LAW. 법령, 행정규칙, 법령해석 및 질의회신을 근거와 함께 통합 검색합니다.">
+  <title>BJFEZ LAW</title>
+  <!-- BJFEZ_BRAND_V12: user-provided logo and compact icon -->
+  <meta name="theme-color" content="#183c60">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=12">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png?v=12">
+  <link rel="apple-touch-icon" href="/static/bjfez-app-icon.png?v=12">
+  <link rel="stylesheet" href="/static/styles.css?v=12">
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <div class="brand-symbol" aria-hidden="true">L<span>·</span></div>
-      <div><strong>LANDLEX</strong><small>국토·도시개발 법령 AI</small></div>
+      <img class="brand-logo" src="/static/bjfez-logo.png?v=12" alt="BJFEZ 로고" width="62" height="48">
+      <div class="brand-copy"><strong>BJFEZ LAW</strong><small>경제자유구역 법령검토 도우미</small></div>
     </div>
     <button class="new-chat" type="button" id="new-chat"><span class="plus-icon">＋</span> 새 질문 시작하기</button>
     <div class="side-label">탐색</div>
-    <button class="side-item selected" id="nav-search"><span>◈</span> 법령 통합 검색</button>
+    <button class="side-item selected" id="nav-search"><span>◈</span> 통합 법령·지침 검색</button>
     <button class="side-item" id="nav-admin"><span>▤</span> 자료 관리 <span class="admin-tag">관리자</span></button>
     <div class="side-label history-label">이번 탭의 질문</div>
     <div id="history" class="history"></div>
-    <div class="sidebar-bottom"><div class="small-status"><i id="status-dot"></i><span id="side-status">연결 상태 확인 중</span></div><p>근거 중심의 법령 검토를 지원합니다.<br>최종 판단 전 반드시 원문을 확인하세요.</p></div>
+    <div class="sidebar-bottom"><div class="sidebar-notice">공개 실무 참고도구 · 기관의 공식 판단을 대체하지 않습니다.</div><div class="small-status"><i id="status-dot"></i><span id="side-status">연결 상태 확인 중</span></div><p>근거 중심의 법령 검토를 지원합니다.<br>최종 판단 전 반드시 원문을 확인하세요.</p></div>
   </aside>
   <div class="content-shell">
     <header class="topbar">
       <button class="mobile-menu" id="mobile-menu" aria-label="메뉴 열기">☰</button>
-      <div class="breadcrumb">통합 법령 검색 <span>/</span> <b>질문 및 검토</b></div>
-      <div class="topbar-right"><span class="top-label" id="connections">시스템 확인 중</span><span class="avatar">법</span></div>
+      <div class="breadcrumb">경제자유구역 법령검색 <span>/</span> <b>질문 및 검토</b></div>
+      <div class="topbar-right"><span class="top-label" id="connections">시스템 확인 중</span><span class="avatar" title="BJFEZ LAW">B</span></div>
     </header>
     <div class="workspace">
     <main class="main-area">
       <section id="welcome" class="welcome">
-        <div class="eyebrow"><span class="line"></span> LEGAL INTELLIGENCE ASSISTANT</div>
-        <h1>법령 검토의 시작,<br><span>더 정확한 근거에서.</span></h1>
-        <p class="welcome-intro">법령과 법제처 해석례, 국토교통부 질의회신을 함께 살펴보고<br class="desktop"> 출처를 확인할 수 있도록 도와드립니다.</p>
+        <div class="eyebrow"><span class="line"></span> BJFEZ LEGAL RESEARCH</div>
+        <h1>경제자유구역 실무의 질문,<br><span>법령과 근거로 검토하세요.</span></h1>
+        <p class="welcome-intro">개발계획·실시계획 변경, 인허가 의제, 공유수면 매립 및 산업단지 관리까지.
+          <span class="desktop"> 법률과 하위법령, 고시·지침, 법령해석 및 질의회신을 함께 찾아 비교합니다.</span></p>
+        <div class="capability-tags" aria-label="지원 검색자료"><span>법령 3단계</span><span>행정규칙·지침</span><span>법령해석·회신</span><span>내부 등록자료</span></div>
         <div class="examples-heading">이런 질문을 시작해 보세요</div>
         <div class="examples">
-          <button class="example" data-question="경제자유구역 내 유치업종을 추가하려면 개발계획을 변경해야 하나요?"><span class="example-icon blue">§</span><span><b>경제자유구역 유치업종 변경</b><small>개발계획 변경 · 경미한 변경 여부</small></span><span class="example-arrow">↗</span></button>
-          <button class="example" data-question="산업단지 관리기본계획 변경을 위한 절차와 필요한 근거는 무엇인가요?"><span class="example-icon green">▥</span><span><b>산업단지 관리기본계획</b><small>입주업종 변경 · 승인 절차</small></span><span class="example-arrow">↗</span></button>
-          <button class="example" data-question="공유수면 매립 실시계획 변경승인 전에 공사를 먼저 시행할 수 있나요?"><span class="example-icon amber">◷</span><span><b>공유수면 실시계획</b><small>변경승인 · 선시공 관련 검토</small></span><span class="example-arrow">↗</span></button>
-          <button class="example" data-question="법제처 법령해석 20-0098 안건과 공유수면 매립 감정평가업자 지정 관련 근거를 찾아줘"><span class="example-icon blue">№</span><span><b>안건번호 20-0098 찾기</b><small>법제처 해석례 · 질의요지 · 회답</small></span><span class="example-arrow">↗</span></button>
+          <button class="example" data-question="경제자유구역에 기존 유치산업에 없는 업종을 추가하려면 개발계획과 실시계획 중 어떤 계획의 변경이 필요하며, 경미한 변경으로 처리할 수 있는 요건과 승인권자는 누구인가요?"><span class="example-icon blue">§</span><span><b>경제자유구역 유치업종 변경</b><small>변경대상 계획 · 경미한 변경 요건 · 승인권자</small></span><span class="example-arrow">↗</span></button>
+          <button class="example" data-question="경제자유구역 안의 산업단지에서 관리기본계획에 새로운 입주업종을 추가하려면 산업집적법에 따른 절차는 무엇이며, 산업단지개발계획이나 실시계획까지 변경해야 하는 경우는 언제인가요?"><span class="example-icon green">▥</span><span><b>산업단지 관리기본계획</b><small>입주업종 변경 · 개발계획과의 관계</small></span><span class="example-arrow">↗</span></button>
+          <button class="example" data-question="공유수면 매립 실시계획의 설계와 공사비를 변경하기 전에 공사를 먼저 시행한 경우, 변경승인 필요 여부와 매립면허관청의 적정성 검토·준공검사·총사업비 인정 범위를 어떤 조문에 따라 판단하나요?"><span class="example-icon amber">◷</span><span><b>공유수면 매립·정산</b><small>설계변경 · 총사업비 · 준공검사</small></span><span class="example-arrow">↗</span></button>
+          <button class="example" data-question="경제자유구역 개발사업의 공유수면 매립지 가격을 산정할 때 감정평가법인등은 어느 기관이 지정하고, 공고 및 추첨 절차는 무엇이며, 관련 시행령·시행규칙과 공식 해석례를 찾아주세요."><span class="example-icon blue">№</span><span><b>감정평가법인 지정</b><small>면허관청 · 고시·지침 · 지정 절차</small></span><span class="example-arrow">↗</span></button>
         </div>
       </section>
       <section class="results hidden" id="results" aria-live="polite">
@@ -58,7 +65,7 @@
         <div class="source-heading">
           <div><h3>검색 근거자료 <span class="source-count" id="source-count">0</span></h3>
             <p>답변의 [번호]나 자료 제목을 누르면 오른쪽에서 원문을 확인할 수 있습니다. 선택한 자료로 AI 재분석도 가능합니다.</p>
-            <div class="citation-legend" aria-label="출처 색상 안내"><span class="legend-law">■ 법령</span><span class="legend-qa">■ 법령해석·질의회신</span><span class="legend-case">■ 판례</span><span class="legend-other">■ 기타 자료</span></div>
+            <div class="citation-legend" aria-label="출처 색상 안내"><span class="legend-law">■ 법령·지침</span><span class="legend-qa">■ 법령해석·질의회신</span><span class="legend-case">■ 판례</span><span class="legend-other">■ 기타 자료</span></div>
           </div>
           <div class="evidence-controls"><span id="selected-count" aria-live="polite">다음 분석에 선택 0/12건</span><button id="reanalyze" type="button" class="reanalyze-button" disabled>선택 자료로 다시 분석</button></div>
         </div>
@@ -94,8 +101,8 @@
     <div class="detail-overlay" id="detail-overlay"></div>
     <section class="composer-wrap" aria-label="질문 입력">
       <form class="composer" id="ask-form">
-        <textarea id="question" rows="2" maxlength="600" placeholder="법령이나 질의회신과 관련하여 궁금한 내용을 질문하세요..." aria-label="질문"></textarea>
-        <div class="composer-bottom"><div class="filters" id="filters"><label><input type="checkbox" value="law" checked> <span>법령</span></label><label><input type="checkbox" value="expc" checked> <span>법제처 해석례</span></label><label><input type="checkbox" value="molit" checked> <span>국토부 회신</span></label><label><input type="checkbox" value="local" checked> <span>등록 자료</span></label><label title="제목·본문·안건번호를 함께 검색하므로 조금 느릴 수 있습니다."><input type="checkbox" id="deep-search" checked> <span>확장 검색</span></label></div><button class="send" type="submit" id="send" title="질문 보내기"><span>검색 및 분석</span><b>↗</b></button></div>
+        <textarea id="question" rows="2" maxlength="600" placeholder="예: 경제자유구역 개발사업 시행자가 실시계획 변경승인을 신청하면서 공사비 증액과 지반개량공법 변경을 요청한 경우, 승인권자가 관련 설계내역·공사비 적정성을 검토하고 보완자료 제출을 요구할 수 있는 법적 근거와 심사 범위는 무엇인가요?" aria-label="질문"></textarea>
+        <div class="composer-bottom"><div class="filters" id="filters"><label><input type="checkbox" value="law" checked> <span>법령</span></label><label title="법제처에 등록된 지침·훈령·예규·고시"><input type="checkbox" value="admrul" checked> <span>지침·행정규칙</span></label><label><input type="checkbox" value="expc" checked> <span>법제처 해석례</span></label><label><input type="checkbox" value="molit" checked> <span>국토부 회신</span></label><label><input type="checkbox" value="local" checked> <span>등록 자료</span></label><label title="제목·본문·안건번호를 함께 검색하므로 조금 느릴 수 있습니다."><input type="checkbox" id="deep-search" checked> <span>확장 검색</span></label></div><button class="send" type="submit" id="send" title="질문 보내기"><span>검색 및 분석</span><b>↗</b></button></div>
       </form>
       <div class="composer-footer"><span>공개 베타 · 비공개/개인정보 입력 금지 · AI 답변은 검증 필요</span><span>Enter 질문 · Shift+Enter 줄바꿈</span></div>
     </section>
@@ -118,6 +125,6 @@
     <p class="admin-notice">최대 512MB까지 업로드할 수 있습니다(개인 PC 서버 기본값). 수백 페이지 사례집은 백그라운드에서 색인합니다. 스캔 PDF는 OCR이 없어 검색할 수 없습니다. 원본 파일은 색인 후 삭제되며 추출 텍스트가 서버 DB에 남습니다. 공개가 허용된 자료만 등록하세요.</p>
   </div>
 </dialog>
-<script src="/static/app.js?v=10" defer></script>
+<script src="/static/app.js?v=12" defer></script>
 </body>
 </html>

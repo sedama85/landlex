@@ -8,12 +8,12 @@ from app.statutory_retrieval import law_level
 
 MAX_DISPLAY = 24
 MAX_EVIDENCE = 12
-LAW = {'법령'}
+LAW = {'법령', '행정규칙'}
 INTERPRETATIONS = {'법제처 해석례', '법제처 법령해석', '국토부 질의회신', '질의회신'}
 
 
 def citation_group(kind: str) -> str:
-    if kind == '법령':
+    if kind in {'법령', '행정규칙'}:
         return 'law'
     if kind in INTERPRETATIONS:
         return 'qa'
@@ -95,6 +95,10 @@ def prepare_sources(question: str, candidates: list[dict]) -> tuple[list[dict], 
         hit=next((t for t in ranked if t[2].get('kind')=='법령'
                   and t[2].get('law_level')==level and t[0]>0), None)
         if hit and hit not in reserved: reserved.append(hit)
+    # Keep one matching administrative rule visible without elevating it
+    # to the same legal authority as Acts or subordinate legislation.
+    admin_hit=next((t for t in ranked if t[2].get('kind')=='행정규칙' and t[0]>0),None)
+    if admin_hit: reserved.append(admin_hit)
     kept=list(reserved)
     kept_keys={t[1] for t in kept}
     for t in ranked:
