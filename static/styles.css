@@ -94,3 +94,12 @@ body.detail-open .workspace .main-area{max-width:800px;}
   .source-inline-toggle{width:36px;}
   .detail-panel-head h3{font-size:14px;}
 }
+
+/* v9: small collapsible query rewrite disclosure; no large content by default. */
+.search-plan-panel{margin-top:14px;border-top:1px solid #edf2f5;padding-top:10px;font-size:11px;color:#61768a;}
+.search-plan-panel summary{cursor:pointer;font-weight:700;color:#426b90;list-style:revert;}
+.search-plan-hint{font-size:10px;font-weight:400;color:#8ca0b1;margin-left:6px;}
+.search-plan-list{line-height:1.7;padding:8px 3px 0 8px;}
+.search-plan-list p{margin:3px 0;}
+.search-plan-list small{color:#9aabb9;}
+.search-plan-issue{font-weight:600;color:#6c879a;}

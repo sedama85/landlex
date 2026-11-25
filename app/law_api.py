@@ -13,6 +13,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from defusedxml import ElementTree as SafeET
 from app.statutory_retrieval import family_queries, law_level, extract_relevant_articles
+from app.authority_retrieval import expanded_question  # AUTHORITY_RETRIEVAL_V8
 
 API_ROOT = 'https://www.law.go.kr/DRF/'
 TAGS = {
@@ -537,6 +538,7 @@ async def _search_interpretations(client, oc, question, *, deep=True, targets=IN
 
 
 async def search_official(question, oc, deep=True, categories=None):
+    question = expanded_question(question)
     if not oc:
         return [], '법제처 API 인증값(LAW_OC)이 없어 공식 실시간 검색을 건너뛰었습니다.'
     words=keywords(question)

@@ -60,6 +60,7 @@ def lexical_score(question: str, item: dict, terms: list[str] | None = None) -> 
     return score
 
 
+# AUTHORITY_RETRIEVAL_V8: caller supplies issue-expanded retrieval terms.
 def prepare_sources(question: str, candidates: list[dict]) -> tuple[list[dict], list[str]]:
     """Rank candidates while reserving actual Act/Decree/Rule evidence.
 

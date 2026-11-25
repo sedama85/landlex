@@ -219,6 +219,19 @@ function showSources(sources){
   updateSelectionTools();
 }
 function renderResult(data){
+  const plan=data.search_plan||{};
+  const planPanel=$('search-plan-panel');
+  const planList=$('search-plan-list');
+  planList.replaceChildren();
+  if(plan.used_ai && Array.isArray(plan.search_questions) && plan.search_questions.length){
+    if(plan.issue)planList.append(el('div','search-plan-issue','검색 쟁점: '+plan.issue));
+    for(const q of plan.search_questions.slice(0,2))planList.append(el('p','','· '+q));
+    planList.append(el('small','','AI가 만든 검색 문구는 판단 근거가 아니며 실제 법령 원문으로 확인합니다.'));
+    planPanel.classList.remove('hidden');
+  }else{
+    planPanel.classList.add('hidden');
+    planPanel.open=false;
+  }
   state.answer=data.answer;state.question=data.question;state.sources=data.sources||[];
   state.searchId=data.search_id||null;
   state.selectedIds=Array.isArray(data.selected_ids)?[...data.selected_ids]:state.sources.slice(0,12).map((s,i)=>s.ref_id||'s'+(i+1));
