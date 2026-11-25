@@ -71,7 +71,7 @@ class ReanalyzeRequest(BaseModel):
     selected_ids: list[str] = Field(min_length=1, max_length=MAX_EVIDENCE)
 
 
-def _save_snapshot(question, sources, alerts):
+def _save_snapshot(question, sources, alerts, plan_info=None):
     now = time.monotonic()
     search_id = uuid4().hex
     with SNAPSHOT_LOCK:
@@ -82,7 +82,7 @@ def _save_snapshot(question, sources, alerts):
             oldest = min(SEARCH_SNAPSHOTS, key=lambda k: SEARCH_SNAPSHOTS[k]['created_at'])
             del SEARCH_SNAPSHOTS[oldest]
         SEARCH_SNAPSHOTS[search_id] = {'question': question, 'sources': sources,
-                                        'alerts': alerts, 'created_at': now}
+                                        'alerts': alerts, 'search_plan': plan_info or {}, 'created_at': now}
     return search_id
 
 
@@ -391,6 +391,7 @@ async def ask(payload: AskRequest, request: Request):
     queries = [payload.question] + alternatives[:2]
     sources = []
     alerts = []
+    official_retries = []
     known = set()
 
     def add_unique(items):
@@ -413,37 +414,51 @@ async def ask(payload: AskRequest, request: Request):
         if warning:
             alerts.append(warning)
 
-        # One additional official *statute* search, never unbounded searches.
-        # Interpretation searching happens in the ordinary original-question pass.
+        # LANDLEX_PLANNER_DIAGNOSTICS_V10: use both distinct rewrite proposals
+        # if necessary, but stop as soon as an actual statute article was found.
+        # Constrain to at most two additional official law-only searches.
         if alternatives and 'law' in categories:
-            more, retry_warning = await search_official(
-                alternatives[0], os.getenv('LAW_OC','').strip(),
-                deep=False, categories=['law'])
-            add_unique(s for s in more if _category_match(s, categories))
-            if retry_warning and not remote:
-                alerts.append('보완 법령 검색: ' + retry_warning)
-        # Preserve the targeted v8 fallback only if no alternative search ran.
+            for rewrite in alternatives[:2]:
+                if any(s.get('kind') == '법령' and s.get('article_number') for s in sources):
+                    break
+                official_retries.append(rewrite)
+                more, retry_warning = await search_official(
+                    rewrite, os.getenv('LAW_OC','').strip(),
+                    deep=False, categories=['law'])
+                add_unique(s for s in more if _category_match(s, categories))
+                if retry_warning and not more:
+                    alerts.append('보완 법령 검색: ' + retry_warning)
+        # Preserve the targeted v8 fallback when AI planning is unavailable.
         elif (not alternatives and 'law' in categories
               and 'authority_issue' in globals()
               and authority_issue(payload.question)
               and 'has_direct_provision' in globals()
               and not has_direct_provision(payload.question, sources)):
+            fallback_question=retry_question(payload.question)
+            official_retries.append(fallback_question)
             more, retry_warning = await search_official(
-                retry_question(payload.question), os.getenv('LAW_OC','').strip(),
+                fallback_question, os.getenv('LAW_OC','').strip(),
                 deep=False, categories=['law'])
             add_unique(s for s in more if _category_match(s, categories))
-            if retry_warning and not remote:
+            if retry_warning and not more:
                 alerts.append('보완 법령 검색: ' + retry_warning)
 
     # Ranking may consider more than one formulation, but the answer is always
     # addressed to the exact original user question, never a rewritten one.
     rank_question = payload.question + (' ' + alternatives[0] if alternatives else '')
     sources, selected_ids = prepare_sources(rank_question[:600], sources)
-    search_id = _save_snapshot(payload.question, sources, alerts) if sources else None
+    plan_info = plan.public_info()
+    plan_info['official_queries'] = official_retries
+    plan_info['statute_articles_found'] = sum(
+        1 for src in sources if src.get('kind') == '법령' and src.get('article_number'))
+    plan_info['statute_articles_selected'] = sum(
+        1 for src in selected_sources(sources, selected_ids)
+        if src.get('kind') == '법령' and src.get('article_number'))
+    search_id = _save_snapshot(payload.question, sources, alerts, plan_info) if sources else None
     answer, mode = await generate_answer(payload.question, selected_sources(sources, selected_ids))
     return {'question': payload.question, 'answer': answer, 'mode': mode,
             'sources': sources, 'selected_ids': selected_ids, 'search_id': search_id,
-            'search_plan': plan.public_info(), 'alerts': alerts,
+            'search_plan': plan_info, 'alerts': alerts,
             'disclaimer': '참고용 검색·분석 결과이며, 법령 시행일 및 자료의 법적 효력은 원문으로 재확인하세요.'}
 
 
@@ -462,7 +477,7 @@ async def reanalyze(payload: ReanalyzeRequest, request: Request):
     answer, mode = await generate_answer(snap['question'], chosen)
     return {'question':snap['question'],'answer':answer,'mode':mode,
             'sources':snap['sources'],'selected_ids':[s['ref_id'] for s in chosen],
-            'search_id':payload.search_id,'alerts':snap['alerts'],
+            'search_id':payload.search_id,'alerts':snap['alerts'], 'search_plan': snap.get('search_plan',{}),
             'disclaimer':'참고용 검색·분석 결과이며, 법령 시행일 및 자료의 법적 효력은 원문으로 재확인하세요.'}
 
 

@@ -223,15 +223,43 @@ function renderResult(data){
   const planPanel=$('search-plan-panel');
   const planList=$('search-plan-list');
   planList.replaceChildren();
-  if(plan.used_ai && Array.isArray(plan.search_questions) && plan.search_questions.length){
+  // v10: never silently hide a failed planner. Show status only on expansion.
+  planPanel.classList.remove('hidden');
+  planPanel.open=false;
+  const descriptions={
+    ok:'AI 질문 재구성 성공',disabled:'AI 질문 재구성 비활성화',
+    provider_not_gemini:'AI 질문 재구성 미지원 제공자',
+    missing_key:'AI 질문 재구성 키 미설정',invalid_model:'모델 설정 오류',
+    http_400:'AI 질문 재구성 요청 오류(400)',
+    http_401:'AI 질문 재구성 인증 오류(401)',
+    http_403:'AI 질문 재구성 접근 제한(403)',
+    http_429:'AI 질문 재구성 사용량 한도(429)',
+    timeout:'AI 질문 재구성 시간 초과',network_error:'AI 질문 재구성 네트워크 오류',
+    invalid_response:'AI 질문 재구성 응답 해석 실패',
+    invalid_questions:'AI 검색 질문 생성 실패',
+    unavailable:'AI 질문 재구성 실패 또는 설정 미확인',
+    not_generated:'AI 질문 재구성 결과 없음'
+  };
+  const worked=!!plan.used_ai && Array.isArray(plan.search_questions) && plan.search_questions.length>0;
+  const title=descriptions[plan.status] || (worked?'AI 질문 재구성 성공':'AI 질문 재구성 미실행');
+  planList.append(el('p','search-plan-status',title));
+  if(worked){
     if(plan.issue)planList.append(el('div','search-plan-issue','검색 쟁점: '+plan.issue));
-    for(const q of plan.search_questions.slice(0,2))planList.append(el('p','','· '+q));
-    planList.append(el('small','','AI가 만든 검색 문구는 판단 근거가 아니며 실제 법령 원문으로 확인합니다.'));
-    planPanel.classList.remove('hidden');
+    for(const q of plan.search_questions.slice(0,2))planList.append(el('p','','생성: '+q));
   }else{
-    planPanel.classList.add('hidden');
-    planPanel.open=false;
+    planList.append(el('p','','원래 질문으로 검색했습니다. 검색 계획을 AI가 생성하지 못했을 수 있습니다.'));
   }
+  if(Array.isArray(plan.official_queries)){
+    planList.append(el('p','','추가 법령 조회: '+plan.official_queries.length+'회'));
+    for(const q of plan.official_queries)planList.append(el('p','','조회: '+q));
+  }
+  if(typeof plan.statute_articles_selected==='number'){
+    planList.append(el('p','','AI에 전달된 법령 조문: '+plan.statute_articles_selected+'건'));
+    if(plan.statute_articles_selected===0){
+      planList.append(el('p','','법령 조문이 선택되지 않았습니다. 현재 답변은 단정하기 어렵습니다.'));
+    }
+  }
+  planList.append(el('small','','생성한 검색 질문은 법적 근거가 아니며, 공식 법령 원문으로 검증해야 합니다.'));
   state.answer=data.answer;state.question=data.question;state.sources=data.sources||[];
   state.searchId=data.search_id||null;
   state.selectedIds=Array.isArray(data.selected_ids)?[...data.selected_ids]:state.sources.slice(0,12).map((s,i)=>s.ref_id||'s'+(i+1));

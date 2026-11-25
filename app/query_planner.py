@@ -25,10 +25,19 @@ class SearchPlan:
     issue: str = ''
     search_questions: tuple[str, ...] = ()
     used_ai: bool = False
+    status: str = 'not_generated'
 
     def public_info(self) -> dict:
+        status = self.status
+        # These are broad operational categories, not server credentials.
+        if status == 'not_generated':
+            if os.getenv('LANDLEX_QUERY_PLANNER','on').strip().lower() in {'off','false','0','no'}:
+                status='disabled'
+            else:
+                status='unavailable'
         return {'used_ai': self.used_ai, 'issue': self.issue,
-                'search_questions': list(self.search_questions)}
+                'search_questions': list(self.search_questions), 'status': status}
+
 
 
 def _normalized(text: str) -> str:
@@ -59,7 +68,8 @@ def parse_plan(payload: dict, original_question: str) -> SearchPlan:
         questions.append(q)
         if len(questions) >= MAX_REWRITES:
             break
-    return SearchPlan(issue=issue, search_questions=tuple(questions), used_ai=bool(questions))
+    return SearchPlan(issue=issue, search_questions=tuple(questions), used_ai=bool(questions),
+                      status='ok' if questions else 'invalid_questions')
 
 
 _SYSTEM = (
@@ -79,11 +89,13 @@ async def plan_question(question: str) -> SearchPlan:
     if os.getenv('LANDLEX_QUERY_PLANNER', 'on').lower().strip() in {'off', 'false', '0', 'no'}:
         return SearchPlan()
     if os.getenv('AI_PROVIDER', 'auto').lower().strip() not in {'gemini', 'auto', ''}:
-        return SearchPlan()
+        return SearchPlan(status='provider_not_gemini')
     key = os.getenv('GEMINI_API_KEY', '').strip()
     model = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash-lite').strip()
-    if not key or not re.fullmatch(r'[A-Za-z0-9._-]{1,100}', model):
-        return SearchPlan()
+    if not key:
+        return SearchPlan(status='missing_key')
+    if not re.fullmatch(r'[A-Za-z0-9._-]{1,100}', model):
+        return SearchPlan(status='invalid_model')
     url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
     req = {
         'systemInstruction': {'parts': [{'text': _SYSTEM}]},
@@ -99,14 +111,24 @@ async def plan_question(question: str) -> SearchPlan:
             response = await client.post(url, headers={'x-goog-api-key': key}, json=req)
         if response.status_code != 200:
             log.warning('Question planner HTTP error: %d', response.status_code)
-            return SearchPlan()
+            return SearchPlan(status='http_'+str(response.status_code))
         result = response.json()
         text = ''.join(
             p.get('text', '') for c in result.get('candidates', [])
             for p in c.get('content', {}).get('parts', [])
             if isinstance(p, dict)
         )
-        return parse_plan(json.loads(text), question)
+        # JSON-mode providers normally return clean JSON, but defensively strip
+        # optional fences rather than silently losing a valid generated plan.
+        cleaned=text.strip()
+        if cleaned.startswith('```'):
+            cleaned=re.sub(r'^```(?:json)?\s*', '', cleaned, flags=re.I)
+            cleaned=re.sub(r'\s*```$', '', cleaned)
+        plan=parse_plan(json.loads(cleaned), question)
+        return plan
+    except httpx.TimeoutException as exc:
+        log.warning('Question planner timed out (%s)', type(exc).__name__)
+        return SearchPlan(status='timeout')
     except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError) as exc:
         log.warning('Question planner unavailable (%s); fallback to original question', type(exc).__name__)
-        return SearchPlan()
+        return SearchPlan(status='invalid_response' if isinstance(exc, (ValueError, TypeError)) else 'network_error')
